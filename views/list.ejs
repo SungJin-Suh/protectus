@@ -444,7 +444,7 @@
 
         // Geocode criminal addresses to get their locations
         const geocodedLocations = await Promise.all(criminals.map(async (criminal) => {
-          const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(criminal.address)}&key=<%= apiKey %>`); // Fetch geocoded data for each criminal address
+          const response = await fetch(`/api/geocode?address=${encodeURIComponent(criminal.address)}`); // Fetch geocoded data for each criminal address
           const data = await response.json(); // Parse the JSON response
           return data.results[0].geometry.location; // Return the location data
         }));
@@ -487,7 +487,7 @@
       }, async function () {
         // Fallback geolocation using the user's address
         try {
-          const userText = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(user.address)}&key=<%= apiKey %>`); // Fetch geocoded data for the user's address
+          const userText = await fetch(`/api/geocode?address=${encodeURIComponent(user.address)}`); // Fetch geocoded data for the user's address
           const userJson = await userText.json(); // Parse the JSON response
           var userAddress = userJson.results[0].geometry.location; // Store the user's location
         } catch (error) {
@@ -500,7 +500,7 @@
 
         // Geocode criminal addresses to get their locations
         const geocodedLocations = await Promise.all(criminals.map(async (criminal) => {
-          const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(criminal.address)}&key=<%= apiKey %>`); // Fetch geocoded data for each criminal address
+          const response = await fetch(`/api/geocode?address=${encodeURIComponent(criminal.address)}`); // Fetch geocoded data for each criminal address
           const data = await response.json(); // Parse the JSON response
           return data.results[0].geometry.location; // Return the location data
         }));
@@ -551,7 +551,7 @@
 
           // Geocode the search address to get coordinates
           try {
-            const searchAddress = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(search)}&key=<%= apiKey %>`); // Fetch geocoded data for the search address
+            const searchAddress = await fetch(`/api/geocode?address=${encodeURIComponent(search)}`); // Fetch geocoded data for the search address
             const searchJson = await searchAddress.json(); // Parse the JSON response
             var searchCoordinate = searchJson.results[0].geometry.location; // Store the search location
           } catch (error) {
@@ -564,7 +564,7 @@
 
           // Geocode criminal addresses to get their locations
           const geocodedLocations = await Promise.all(criminals.map(async (criminal) => {
-            const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(criminal.address)}&key=<%= apiKey %>`); // Fetch geocoded data for each criminal address
+            const response = await fetch(`/api/geocode?address=${encodeURIComponent(criminal.address)}`); // Fetch geocoded data for each criminal address
             const data = await response.json(); // Parse the JSON response
             return data.results[0].geometry.location; // Return the location data
           }));

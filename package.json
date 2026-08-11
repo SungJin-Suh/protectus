@@ -4,13 +4,19 @@
   "description": "Team Name: DTC-07\r Team Members:",
   "main": "scripts/server.js",
   "scripts": {
+    "start": "node scripts/server.js",
+    "seed": "node scripts/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.6",
     "bcrypt": "^5.1.1",
+    "connect-mongo": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",

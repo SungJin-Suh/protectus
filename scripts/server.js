@@ -7,6 +7,7 @@ const bcrypt = require(`bcrypt`);
 const Joi = require(`joi`);
 const cors = require("cors");
 const methodOverride = require("method-override");
+const { MongoStore } = require("connect-mongo"); // v6 ships named exports.
 
 // Variables from dotenv file.
 const mongo_user = process.env.MONGODB_USER;
@@ -14,22 +15,30 @@ const mongo_password = process.env.MONGODB_PASSWORD;
 const mongo_host = process.env.MONGODB_HOST;
 const mongo_db = process.env.MONGODB_DATABASE;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
-const APIKEY = process.env.GOOGLE_MAPS_API_KEY;
+const APIKEY = process.env.GOOGLE_MAPS_BROWSER_KEY;
+const GEOCODE_KEY = process.env.GOOGLE_MAPS_SERVER_KEY;
+
+// One connection string for both mongoose and the session store.
+const mongo_uri =
+    process.env.MONGODB_URI ||
+    `mongodb+srv://${mongo_user}:${mongo_password}@${mongo_host}/${mongo_db}`;
 
 // Setup.
 const app = express();
 const PORT = process.env.PORT || 3000;
 const saltRounds = Number(process.env.SALT_ROUNDS);
 const expireTime = 1000 * 60 * 60;
+const isProduction = process.env.NODE_ENV === "production";
 const { Decimal128 } = mongoose.Schema.Types;
+
+// Render terminates TLS at its proxy, so trust it or secure cookies are never sent.
+app.set("trust proxy", 1);
 
 main().catch((err) => console.error("MongoDB connection error:", err)); // Log MongoDB connection errors
 
 async function main() {
     try {
-        await mongoose.connect(
-            `mongodb+srv://${mongo_user}:${mongo_password}@${mongo_host}/${mongo_db}`
-        );
+        await mongoose.connect(mongo_uri);
         console.log("Connected to MongoDB");
     } catch (error) {
         console.error("MongoDB connection error:", error);
@@ -107,8 +116,18 @@ app.use(
     session({
         secret: node_session_secret,
         resave: false,
-        saveUninitialized: true,
-        // cookie: { secure: true },
+        saveUninitialized: false,
+        // Sessions live in MongoDB so they survive restarts and work across instances.
+        store: MongoStore.create({
+            mongoUrl: mongo_uri,
+            collectionName: "sessions",
+            ttl: expireTime / 1000,
+        }),
+        cookie: {
+            maxAge: expireTime,
+            httpOnly: true,
+            secure: isProduction, // Local development is plain http, so only require https in production.
+        },
     })
 );
 app.use(cors());
@@ -116,13 +135,19 @@ app.use(express.urlencoded({ extended: false }));
 app.use(methodOverride("_method"));
 app.use(express.json()); // To parse JSON bodies
 
-// Validate user by email and password.
+// Sessions are persisted, so never put the password hash in them.
+function toSessionUser(user) {
+    const { password, ...safeUser } = user.toObject();
+    return safeUser;
+}
+
+// Validate user by the email their session was issued for.
 async function validateUser(req, res, next) {
-    if (req.session.email && req.session.password) {
+    if (req.session.authenticated && req.session.email) {
         const user = await Users.findOne({ email: req.session.email });
 
-        if (user && bcrypt.compareSync(req.session.password, user.password)) {
-            req.session.user = user;
+        if (user) {
+            req.session.user = toSessionUser(user);
             req.session.cookie.maxAge = expireTime;
             return next();
         }
@@ -200,7 +225,7 @@ app.post("/login", async (req, res) => {
         });
     } else {
         req.session.email = email;
-        req.session.password = password;
+        req.session.authenticated = true;
         res.redirect("/map");
     }
 });
@@ -253,7 +278,7 @@ app.post("/signup", async (req, res) => {
         });
 
         req.session.email = email;
-        req.session.password = password;
+        req.session.authenticated = true;
 
         res.redirect("/map");
     }
@@ -573,7 +598,7 @@ app.post("/updateProfile", validateUser, async (req, res) => {
     );
 
     const user = await Users.findOne({ email: email });
-    req.session.user = user;
+    req.session.user = toSessionUser(user);
     req.session.email = email;
 
     res.redirect("/profile");
@@ -684,10 +709,25 @@ app.get("/logout", validateUser, (req, res) => {
     console.log("Destory session");
     req.session.user = undefined;
     req.session.email = undefined;
-    req.session.password = undefined;
+    req.session.authenticated = undefined;
     req.session.destroy();
 
     res.redirect("/login");
+});
+
+// Invalid request
+app.get("/api/geocode", validateUser, async (req, res) => {
+    const address = req.query.address;
+    if (!address) return res.status(400).json({ status: "INVALID_REQUEST" });
+
+    try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GEOCODE_KEY}`;
+        const r = await fetch(url);
+        res.json(await r.json());
+    } catch (err) {
+        console.error("Geocode proxy error:", err);
+        res.status(502).json({ status: "UNKNOWN_ERROR" });
+    }
 });
 
 // URL not found error.

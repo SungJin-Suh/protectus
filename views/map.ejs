@@ -380,7 +380,7 @@
                         const search = document.getElementById('searchBar').value.toLowerCase();
 
                         try {
-                            const searchAddress = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(search)}&key=<%= apiKey %>`);
+                            const searchAddress = await fetch(`/api/geocode?address=${encodeURIComponent(search)}`);
                             const searchJson = await searchAddress.json();
                             userLocation = searchJson.results[0].geometry.location;
                             console.log(userLocation)
