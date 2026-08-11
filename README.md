@@ -8,6 +8,8 @@
 
 Crime rates have tripled over the past three decades since 2024. ProtectUs enables users to obtain crime and criminal information depending on their current location to keep our loved ones safe. We provide protection solutions for our clients to tackle these threats surrounding them.
 
+🔗 **Live demo:** [protectus.onrender.com](https://protectus.onrender.com) sign up with any email to look around 😃.
+
 ## 💞 Names of Contributors
 
 - Seogin Hong ([@seogin](https://github.com/seogin))
